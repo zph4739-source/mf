@@ -2,21 +2,70 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Moldflow Help Desk - 사출 성형 공정 관리</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root{--primary:#1a5f7a;--primary-dark:#0d3d52;--primary-light:#2d8bb8;--accent:#ff6b35;--accent-light:#ff8c5a;--success:#28a745;--warning:#ffc107;--danger:#dc3545;--bg-dark:#0f1419;--bg-card:#1a2332;--bg-input:#232d3f;--text-primary:#e8edf3;--text-secondary:#8899aa;--border:#2d3d52}
+        /* 라이트 모드(밝은 배경) 변수 오버라이드 */
+        body.light-mode{
+            --bg-dark:#ffffff;
+            --bg-card:#f7f9fc;
+            --bg-input:#ffffff;
+            --text-primary:#111827;
+            --text-secondary:#4b5563;
+            --border:#d1d5db;
+        }
+        body.light-mode #login-overlay{
+            background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
+        }
+
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Noto Sans KR',sans-serif;background:var(--bg-dark);color:var(--text-primary);min-height:100vh;line-height:1.6}
+        body{font-family:'Noto Sans KR',sans-serif;background:var(--bg-dark);color:var(--text-primary);min-height:100vh;line-height:1.6; overflow-x: hidden;} /* 로그인 전 스크롤 방지 */
+        
+        /* --- 로그인 오버레이 스타일 추가 --- */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #080a0d 100%);
+            z-index: 9999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        .login-card {
+            background: var(--bg-card); padding: 3rem; border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid var(--border);
+            text-align: center; max-width: 400px; width: 90%;
+        }
+        .login-logo {
+            width: 70px; height: 70px; background: var(--accent);
+            border-radius: 16px; margin: 0 auto 1.5rem;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; font-weight: 700; color: white;
+        }
+        .login-input {
+            width: 100%; padding: 1rem; margin: 1.5rem 0;
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text-primary); font-size: 1.1rem; text-align: center;
+        }
+        .login-input:focus { outline: none; border-color: var(--accent); }
+        .login-btn {
+            width: 100%; padding: 1rem; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border: none; border-radius: 8px; color: white; font-size: 1.1rem; font-weight: 600;
+            cursor: pointer; transition: transform 0.2s;
+        }
+        .login-btn:hover { transform: translateY(-2px); }
+        .login-footer { margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-secondary); }
+        .error-msg { color: var(--danger); margin-top: 1rem; font-size: 0.9rem; display: none; }
+        
+        /* 기존 스타일 유지 */
         header{background:linear-gradient(135deg,#1a5f7a 0%,#2d8bb8 100%);padding:1.5rem 2rem;position:sticky;top:0;z-index:1000;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
         .header-content{max-width:1600px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
         .logo{display:flex;align-items:center;gap:1rem}
         .logo-icon{width:50px;height:50px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white}
         .logo h1{font-size:1.6rem;font-weight:700}
         .logo span{font-size:0.85rem;font-weight:400;opacity:0.9;display:block}
-        .main-container{display:flex;max-width:1800px;margin:0 auto;min-height:calc(100vh - 100px)}
+        .main-container{display:flex;max-width:1800px;margin:0 auto;min-height:calc(100vh - 100px); filter: blur(5px); transition: filter 0.5s;} /* 로그인 전 블러 처리 */
         .sidebar{width:300px;background:var(--bg-card);padding:1.5rem 0;border-right:1px solid var(--border);position:sticky;top:100px;height:calc(100vh - 100px);overflow-y:auto}
         .sidebar::-webkit-scrollbar{width:6px}
         .sidebar::-webkit-scrollbar-track{background:var(--bg-dark)}
@@ -79,25 +128,187 @@
         .profile-row{display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:1rem;align-items:center;padding:0.75rem;border-bottom:1px solid var(--border)}
         .profile-row:last-child{border-bottom:none}
         .profile-header{background:var(--bg-input);font-weight:600;color:var(--primary-light);border-radius:8px 8px 0 0}
-        @media(max-width:768px){.main-container{flex-direction:column}.sidebar{width:100%;height:auto;position:relative;top:0}.content{padding:1rem}.form-grid{grid-template-columns:1fr}}
-        @media print{.sidebar,header{display:none}.content{padding:0}.card{break-inside:avoid;box-shadow:none;border:1px solid #ccc}}
+        /* 테이블 래퍼 - 반응형 스크롤 */
+        .table-wrapper{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0.5rem 0}
+        
+        /* 모바일 메뉴 버튼 */
+        .mobile-menu-btn{display:none;width:40px;height:40px;background:rgba(255,255,255,0.1);border:none;border-radius:8px;color:white;font-size:1.5rem;cursor:pointer;align-items:center;justify-content:center}
+        
+        /* 사이드바 오버레이 */
+        .sidebar-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:998}
+        .sidebar-overlay.active{display:block}
+        
+        /* 사이드바 닫기 버튼 */
+        .sidebar-close{display:none;position:absolute;top:0.5rem;right:0.5rem;width:36px;height:36px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:1.25rem;cursor:pointer;align-items:center;justify-content:center;z-index:10}
+        
+        /* 태블릿 (1024px 이하) */
+        @media (max-width:1024px){
+            .sidebar{width:240px}
+            .form-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+            .result-value{font-size:1.2rem}
+            .chart-container{height:280px}
+            .profile-row{grid-template-columns:60px repeat(3,1fr);gap:0.5rem}
+        }
+        
+        /* 모바일 (768px 이하) */
+        @media (max-width:768px){
+            body{font-size:15px}
+            header{padding:0.625rem 0.75rem}
+            .logo-icon{width:36px;height:36px;font-size:1.1rem;border-radius:8px}
+            .logo h1{font-size:0.9rem}
+            .logo span{display:none}
+            .header-content{flex-wrap:wrap;gap:0.5rem}
+            .header-content>div:last-child{display:flex;flex-wrap:wrap;gap:0.4rem;justify-content:flex-end}
+            .header-content .btn{padding:0.4rem 0.5rem;font-size:0.7rem}
+            .mobile-menu-btn{display:flex}
+            .main-container{flex-direction:column}
+            .sidebar{position:fixed;top:0;left:0;width:280px;height:100vh;z-index:999;transform:translateX(-100%);transition:transform 0.3s ease;padding-top:3rem}
+            .sidebar.open{transform:translateX(0);box-shadow:4px 0 20px rgba(0,0,0,0.5)}
+            .sidebar-close{display:flex;align-items:center;justify-content:center}
+            .content{padding:1rem;width:100%}
+            .page-title{font-size:1.15rem}
+            .page-desc{font-size:0.85rem}
+            .card{padding:1rem;border-radius:10px}
+            .card-title{font-size:0.95rem}
+            .form-grid{grid-template-columns:1fr 1fr;gap:0.75rem}
+            .form-input,.form-select{padding:0.5rem;font-size:0.85rem;min-height:44px}
+            .form-label{font-size:0.75rem}
+            .result-box{padding:0.75rem}
+            .result-label{font-size:0.7rem}
+            .result-value{font-size:1rem}
+            .menu-grid{grid-template-columns:1fr;gap:0.75rem}
+            .menu-card{padding:1rem}
+            .menu-card h3{font-size:0.95rem}
+            .menu-card p{font-size:0.8rem}
+            .profile-row{grid-template-columns:50px repeat(3,1fr);gap:0.4rem;padding:0.5rem;font-size:0.8rem}
+            .profile-header{font-size:0.7rem}
+            .profile-row .form-input{padding:0.35rem;font-size:0.8rem}
+            .chart-container{height:250px;padding:0.75rem}
+            .data-table{font-size:0.75rem;min-width:450px}
+            .data-table th{padding:0.4rem 0.25rem;font-size:0.65rem;white-space:nowrap}
+            .data-table td{padding:0.3rem}
+            .data-table input{min-width:45px;padding:0.25rem;font-size:0.7rem;min-height:32px}
+            .info-box{padding:0.75rem}
+            .info-box h4{font-size:0.85rem}
+            .info-box p{font-size:0.8rem}
+            .formula-box{padding:0.75rem;font-size:0.7rem;word-break:break-all}
+            .target-edit{flex-wrap:wrap;padding:0.75rem;gap:0.5rem}
+            .target-edit label{font-size:0.8rem;width:100%}
+            .target-edit input{width:80px}
+            .target-edit span{font-size:0.7rem}
+            .btn{padding:0.5rem 0.625rem;font-size:0.75rem}
+            .nav-item{padding:0.75rem 1.25rem;font-size:0.85rem}
+        }
+        
+        /* 모바일 작은 화면 (480px 이하) */
+        @media (max-width:480px){
+            body{font-size:14px}
+            .login-card{padding:1.5rem 1.25rem;border-radius:12px;margin:0.5rem}
+            .login-logo{width:50px;height:50px;font-size:1.5rem}
+            .login-card h2{font-size:1rem}
+            .login-input{padding:0.75rem;font-size:0.9rem}
+            .login-btn{padding:0.75rem;font-size:0.9rem}
+            .login-footer{font-size:0.65rem}
+            .logo-icon{width:32px;height:32px;font-size:1rem}
+            .logo h1{font-size:0.8rem}
+            .header-content .btn:nth-child(1),.header-content .btn:nth-child(2){display:none}
+            .content{padding:0.75rem}
+            .page-header{margin-bottom:1rem;padding-bottom:0.75rem}
+            .page-title{font-size:1.05rem}
+            .page-desc{font-size:0.8rem}
+            .card{padding:0.875rem;margin-bottom:1rem}
+            .card-title{font-size:0.9rem;margin-bottom:0.75rem}
+            .form-grid{grid-template-columns:1fr;gap:0.625rem}
+            .form-label{font-size:0.7rem}
+            .form-input,.form-select{padding:0.5rem;font-size:0.8rem}
+            .result-box{padding:0.625rem}
+            .result-label{font-size:0.65rem}
+            .result-value{font-size:0.95rem}
+            .result-box small{font-size:0.6rem}
+            .info-box h4{font-size:0.8rem}
+            .info-box p{font-size:0.75rem}
+            .formula-box{font-size:0.65rem}
+            .target-edit{flex-direction:column;align-items:flex-start}
+            .target-edit input{width:100%}
+            .menu-section-title{font-size:1rem;margin:1.25rem 0 0.625rem}
+            .menu-card h3{font-size:0.9rem}
+            .menu-card p{font-size:0.75rem}
+            .profile-row{grid-template-columns:40px repeat(3,1fr);gap:0.25rem;padding:0.4rem;font-size:0.7rem}
+            .profile-header{font-size:0.6rem}
+            .profile-row .form-input{padding:0.25rem;font-size:0.7rem}
+            .chart-container{height:200px}
+            .data-table{font-size:0.65rem;min-width:400px}
+            .data-table th{padding:0.3rem 0.2rem;font-size:0.6rem}
+            .data-table td{padding:0.25rem}
+            .data-table input{min-width:40px;padding:0.2rem;font-size:0.65rem;min-height:28px}
+        }
+        
+        /* 아주 작은 화면 (360px 이하) */
+        @media (max-width:360px){
+            .login-card h2{font-size:0.9rem}
+            .page-title{font-size:1rem}
+            .result-value{font-size:0.85rem}
+            .sidebar{width:100%}
+            .profile-row{grid-template-columns:1fr;text-align:center;gap:0.5rem}
+            .profile-row>div:first-child{font-weight:700;border-bottom:1px dashed var(--border);padding-bottom:0.25rem}
+            .profile-header{display:none}
+        }
+        
+        /* 터치 디바이스 최적화 */
+        @media (hover:none) and (pointer:coarse){
+            .btn,.menu-card,.nav-item{-webkit-tap-highlight-color:transparent}
+            .btn:active{transform:scale(0.98)}
+            .menu-card:active{transform:translateY(-2px)}
+            .nav-item{padding:0.875rem 1.25rem}
+            .data-table input{min-height:36px}
+            .form-input,.form-select{min-height:44px}
+        }
+        
+        /* 인쇄 스타일 */
+        @media print{.sidebar,header,#login-overlay,.mobile-menu-btn,.sidebar-overlay{display:none!important}.main-container{filter:none!important}.content{padding:0;width:100%}.card{break-inside:avoid;box-shadow:none;border:1px solid #ccc}.chart-container{break-inside:avoid}}
     </style>
 </head>
 <body>
+
+<!-- 사이드바 오버레이 (모바일용) -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<div id="login-overlay">
+        <div class="login-card">
+            <div class="login-logo">M</div>
+            <h2 style="font-size:1.5rem;margin-bottom:0.5rem;">ED&C Moldflow & Machine Help Desk</h2>
+            <p style="color:var(--text-secondary);font-size:0.9rem;">사출 성형 공정 관리 앱</p>
+            
+            <input type="password" id="login-pw" class="login-input" placeholder="비밀번호를 입력하세요" onkeyup="if(event.key==='Enter') tryLogin()">
+            <button class="login-btn" onclick="tryLogin()">로그인</button>
+            <p id="login-error" class="error-msg">⛔ 비밀번호가 올바르지 않습니다.</p>
+            
+            <div class="login-footer">
+                Authorized Personnel Only<br>
+                <span style="color:#ff6b35; font-weight:500;">사용 유효 기간: <span id="display-expire-date">2026년 2월 28일</span> 까지</span><br>
+                <div style="margin-top:0.5rem; opacity:0.7;">© 2026 (주)이디앤씨 Autodesk Team</div>
+            </div>
+        </div>
+    </div>
+
     <header>
         <div class="header-content">
             <div class="logo">
                 <div class="logo-icon">M</div>
                 <div><h1>Moldflow Help Desk</h1><span>사출 성형 공정 관리 시스템 v2.0</span></div>
             </div>
-            <div style="display:flex;gap:1rem;align-items:center;">
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-outline" id="theme-toggle" onclick="toggleTheme()" aria-pressed="false" title="화면 색상 반전">🌞 밝게</button>
                 <button class="btn btn-outline" onclick="window.print()">📄 인쇄</button>
                 <button class="btn btn-accent" onclick="resetAllData()">🔄 초기화</button>
+                <button class="btn btn-outline" style="border-color:var(--danger);color:var(--danger);" onclick="doLogout()">🔒 잠금</button>
+                <button class="mobile-menu-btn" onclick="openSidebar()" aria-label="메뉴 열기">☰</button>
             </div>
         </div>
     </header>
-    <div class="main-container">
-        <nav class="sidebar">
+    <div class="main-container" id="main-app">
+        <nav class="sidebar" id="sidebar">
+            <button class="sidebar-close" onclick="closeSidebar()" aria-label="메뉴 닫기">✕</button>
             <div class="nav-section">
                 <div class="nav-section-title">시작</div>
                 <div class="nav-item active" data-page="start"><span class="nav-icon">🏠</span> 시작 메뉴</div>
@@ -113,7 +324,7 @@
                 <div class="nav-item" data-page="load-sensitivity"><span class="nav-icon">⚖️</span> 부하 민감도</div>
                 <div class="nav-item" data-page="check-ring"><span class="nav-icon">🔄</span> 체크링 반복성</div>
                 <div class="nav-item" data-page="pressure-response"><span class="nav-icon">📈</span> 압력 응답성</div>
-                <div class="nav-item" data-page="platen-deflection"><span class="nav-icon">📐</span> 플래튼 변형</div>
+                <div class="nav-item" data-page="platen-deflection"><span class="nav-icon">📐</span> 금형형판 변형</div>
             </div>
             <div class="nav-section">
                 <div class="nav-section-title">공정 개발</div>
@@ -136,7 +347,6 @@
             </div>
         </nav>
         <main class="content">
-            <!-- START PAGE -->
             <div id="page-start" class="page active">
                 <div class="page-header">
                     <h2 class="page-title">Moldflow Help Desk에 오신 것을 환영합니다</h2>
@@ -153,7 +363,7 @@
                     <div class="menu-card" onclick="navigateTo('load-sensitivity')"><h3>⚖️ 부하 민감도</h3><p>금형 샷과 에어 샷의 차이를 비교합니다.</p></div>
                     <div class="menu-card" onclick="navigateTo('check-ring')"><h3>🔄 체크링 반복성</h3><p>체크링 씰의 일관성을 측정합니다.</p></div>
                     <div class="menu-card" onclick="navigateTo('pressure-response')"><h3>📈 압력 응답성</h3><p>V→P 전환의 응답성을 측정합니다.</p></div>
-                    <div class="menu-card" onclick="navigateTo('platen-deflection')"><h3>📐 플래튼 변형</h3><p>보압 중 고정 플래튼의 변형을 측정합니다.</p></div>
+                    <div class="menu-card" onclick="navigateTo('platen-deflection')"><h3>📐 금형형판 변형</h3><p>보압 중 고정 금형형판의 변형을 측정합니다.</p></div>
                 </div>
                 <h3 class="menu-section-title">⚙️ 공정 개발</h3>
                 <div class="menu-grid">
@@ -173,7 +383,6 @@
                 </div>
             </div>
 
-            <!-- METERING CALCULATOR PAGE -->
             <div id="page-metering-calc" class="page">
                 <div class="page-header">
                     <h2 class="page-title">⚙️ 계량 계산기 (Metering Calculator)</h2>
@@ -302,6 +511,7 @@
 
                 <div class="card">
                     <h3 class="card-title">📋 일반 수지 밀도 참조표</h3>
+                    <div class="table-wrapper">
                     <table class="data-table">
                         <thead>
                             <tr><th>수지</th><th>고체 밀도 (g/cm³)</th><th>용융 밀도 (g/cm³)</th><th>비고</th></tr>
@@ -319,10 +529,10 @@
                             <tr><td>PS</td><td>1.04~1.06</td><td>0.95~0.98</td><td>비정질</td></tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- FILL CONTROL CALCULATOR PAGE -->
             <div id="page-fill-control" class="page">
                 <div class="page-header">
                     <h2 class="page-title">📈 충전 제어 계산기 (Fill Control Calculator)</h2>
@@ -334,13 +544,6 @@
                     <div class="info-box">
                         <h4>충전 제어(Fill Control)란?</h4>
                         <p>사출 성형에서 충전 단계는 용융 수지가 금형 캐비티를 채우는 과정입니다. 다단 속도 제어를 통해 게이트 통과, 두꺼운 부분, 얇은 부분 등 각 영역에 맞는 최적의 충전 속도를 설정할 수 있습니다.</p>
-                    </div>
-                    <div class="info-box" style="margin-top:1rem;">
-                        <h4>Moldflow 해석 결과 활용</h4>
-                        <p>
-                            <strong>시간 기반 입력:</strong> Moldflow에서 각 구간별 충전 시간을 확인한 후, 해당 시간에 도달하는 스크류 위치와 속도를 계산합니다.<br>
-                            <strong>위치 기반 변환:</strong> 계량값(Starting Ram Position)에서 시작하여 각 단계별 목표 위치와 속도를 설정합니다.
-                        </p>
                     </div>
                     <div class="formula-box">
                         <strong>위치 계산식:</strong><br>
@@ -438,6 +641,7 @@
                         </div>
                     </div>
                     
+                    <div class="table-wrapper">
                     <table class="data-table" style="margin-top:1.5rem;">
                         <thead>
                             <tr><th>단계</th><th>거리 (mm)</th><th>체적 (cm³)</th><th>시간 (sec)</th><th>체적유량 (cm³/s)</th></tr>
@@ -449,6 +653,7 @@
                             <tr><td>4단</td><td id="fc-dist4">--</td><td id="fc-vol4">--</td><td id="fc-time4">--</td><td id="fc-flow4">--</td></tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 <div class="card">
@@ -458,7 +663,6 @@
                     </div>
                 </div>
             </div>
-            <!-- SPEED LINEARITY PAGE -->
             <div id="page-speed-linearity" class="page">
                 <div class="page-header">
                     <h2 class="page-title">📊 사출 속도 선형성 연구</h2>
@@ -500,10 +704,12 @@
                 </div>
                 <div class="card">
                     <h3 class="card-title">📊 테스트 데이터</h3>
+                    <div class="table-wrapper">
                     <table class="data-table">
                         <thead><tr><th>샷 #</th><th>설정 속도 (mm/s)</th><th>실제 충전 시간 (sec)</th><th>예상 충전 시간</th><th>실제 평균 속도</th><th>속도 변화율 (%)</th><th>판정</th></tr></thead>
                         <tbody id="sl-table-body"></tbody>
                     </table>
+                    </div>
                 </div>
                 <div class="card">
                     <h3 class="card-title">📈 종합 결과</h3>
@@ -515,7 +721,6 @@
                 </div>
             </div>
 
-            <!-- LOAD SENSITIVITY PAGE -->
             <div id="page-load-sensitivity" class="page">
                 <div class="page-header">
                     <h2 class="page-title">⚖️ 부하 민감도 연구</h2>
@@ -570,7 +775,6 @@
                 </div>
             </div>
 
-            <!-- CHECK RING PAGE -->
             <div id="page-check-ring" class="page">
                 <div class="page-header">
                     <h2 class="page-title">🔄 동적 체크링 반복성 연구</h2>
@@ -601,6 +805,7 @@
                 </div>
                 <div class="card">
                     <h3 class="card-title">📊 부품 중량 데이터 (g)</h3>
+                    <div class="table-wrapper">
                     <table class="data-table">
                         <thead><tr><th>샷 #</th><th>부품 중량</th><th>샷 #</th><th>부품 중량</th></tr></thead>
                         <tbody>
@@ -611,6 +816,7 @@
                             <tr><td>5</td><td><input type="number" id="cr-w5" step="0.001" oninput="calcCheckRing()"></td><td>10</td><td><input type="number" id="cr-w10" step="0.001" oninput="calcCheckRing()"></td></tr>
                         </tbody>
                     </table>
+                    </div>
                 </div>
                 <div class="card">
                     <h3 class="card-title">📈 결과</h3>
@@ -623,7 +829,6 @@
                 </div>
             </div>
 
-            <!-- PRESSURE RESPONSE PAGE -->
             <div id="page-pressure-response" class="page">
                 <div class="page-header">
                     <h2 class="page-title">📈 압력 응답성 연구</h2>
@@ -668,17 +873,16 @@
                 </div>
             </div>
 
-            <!-- PLATEN DEFLECTION PAGE -->
             <div id="page-platen-deflection" class="page">
                 <div class="page-header">
-                    <h2 class="page-title">📐 플래튼 변형 연구</h2>
-                    <p class="page-desc">성형 사이클 중 고정 플래튼의 변형량을 측정합니다.</p>
+                    <h2 class="page-title">📐 금형형판 변형 연구</h2>
+                    <p class="page-desc">성형 사이클 중 고정 금형형판의 변형량을 측정합니다.</p>
                 </div>
                 <div class="card">
                     <h3 class="card-title">ℹ️ 목적 및 절차</h3>
                     <div class="info-box">
                         <h4>목적</h4>
-                        <p>성형 사이클 동안 고정 플래튼의 변형량을 확인합니다. 결과는 금형 또는 공정 기록에 보관해야 합니다.</p>
+                        <p>성형 사이클 동안 고정 금형형판의 변형량을 확인합니다. 결과는 금형 또는 공정 기록에 보관해야 합니다.</p>
                     </div>
                     <div class="info-box" style="margin-top:1rem;">
                         <h4>필요 장비</h4>
@@ -686,10 +890,10 @@
                     </div>
                     <div class="info-box" style="margin-top:1rem;">
                         <h4>절차</h4>
-                        <p>1. 표준 DECOUPLED MOLDING® II 공정으로 기계 설정<br>
-                        2. 인디케이터 설치 (마그네틱 베이스를 기계에 부착, 다이얼 인디케이터를 고정 플래튼 중앙 근처에 접촉)<br>
+                        <p>1. 표준 성형조건(사출로 95~99%를 채우고 보압전환)공정으로 기계 설정<br>
+                        2. 인디케이터 설치 (마그네틱 베이스를 기계에 부착, 다이얼 인디케이터를 고정 금형형판 중앙 근처에 접촉)<br>
                         3. 인디케이터 영점 조정<br>
-                        4. 5사이클 운전 후 보압 및 유지 중 플래튼 변형량 기록</p>
+                        4. 5사이클 운전 후 보압 및 유지 중 금형형판 변형량 기록</p>
                     </div>
                 </div>
                 <div class="card">
@@ -715,7 +919,6 @@
                 </div>
             </div>
 
-            <!-- CLAMP FORCE PAGE -->
             <div id="page-clamp-force" class="page">
                 <div class="page-header">
                     <h2 class="page-title">🔧 최소 형체력 계산</h2>
@@ -748,7 +951,6 @@
                 </div>
             </div>
 
-            <!-- MELT TEMP PAGE -->
             <div id="page-melt-temp" class="page">
                 <div class="page-header">
                     <h2 class="page-title">🌡️ 용융 온도 측정</h2>
@@ -773,7 +975,6 @@
                 </div>
             </div>
 
-            <!-- FILL FLOW PAGE -->
             <div id="page-fill-flow" class="page">
                 <div class="page-header">
                     <h2 class="page-title">💧 충전 유량 연구</h2>
@@ -801,7 +1002,6 @@
                 </div>
             </div>
 
-            <!-- HOLD TIME PAGE -->
             <div id="page-hold-time" class="page">
                 <div class="page-header">
                     <h2 class="page-title">⏱️ 보압 시간 연구</h2>
@@ -828,7 +1028,6 @@
                 </div>
             </div>
 
-            <!-- CAVITY IMBALANCE PAGE -->
             <div id="page-cavity-imbalance" class="page">
                 <div class="page-header">
                     <h2 class="page-title">⚖️ 캐비티 불균형 연구</h2>
@@ -868,7 +1067,6 @@
                 </div>
             </div>
 
-            <!-- PRESSURE LOSS PAGE -->
             <div id="page-pressure-loss" class="page">
                 <div class="page-header">
                     <h2 class="page-title">📉 동적 압력 손실 연구</h2>
@@ -882,7 +1080,7 @@
                     </div>
                     <div class="info-box" style="margin-top:1rem;">
                         <h4>절차</h4>
-                        <p>1. DECOUPLED MOLDING® II 공정 설정, 적절한 크기의 충전 전용 숏 확인<br>
+                        <p>1. 성형조건(사출로 95~99%를 채우고 보압전환)공정 설정, 적절한 크기의 충전 전용 숏 확인<br>
                         2. 사출 유닛 후퇴, 보압 꺼짐<br>
                         3. 에어샷: 공기 중으로 충전 전용 숏 배출, 피크 V→P 압력 기록<br>
                         4. 스프루/러너: 스프루와 러너만 채우도록 숏 크기 조정, 피크 압력 기록<br>
@@ -904,7 +1102,6 @@
                 </div>
             </div>
 
-            <!-- COOLING PAGE -->
             <div id="page-cooling" class="page">
                 <div class="page-header">
                     <h2 class="page-title">❄️ 냉각 시간 최적화</h2>
@@ -966,7 +1163,6 @@
                 </div>
             </div>
 
-            <!-- WATER FLOW PAGE -->
             <div id="page-water-flow" class="page">
                 <div class="page-header">
                     <h2 class="page-title">🌊 냉각수 유량 (레이놀즈 수)</h2>
@@ -1013,7 +1209,6 @@
                 </div>
             </div>
 
-            <!-- MOLD DEFLECTION PAGE -->
             <div id="page-mold-deflection" class="page">
                 <div class="page-header">
                     <h2 class="page-title">📏 금형 변형 연구</h2>
@@ -1027,7 +1222,7 @@
                     </div>
                     <div class="info-box" style="margin-top:1rem;">
                         <h4>절차</h4>
-                        <p>1. DECOUPLED MOLDING® II 공정 설정<br>
+                        <p>1. 성형조건(사출로 95~99%를 채우고 보압전환)공정 설정<br>
                         2. 사출 유닛을 전진시켜 스프루 부싱에 접촉<br>
                         3. 인디케이터 설치 (마그네틱 베이스를 기계에 부착, 다이얼 인디케이터를 사출 유닛에 접촉)<br>
                         4. 전체 형체력으로 금형 클램핑, 전체 노즐 전진력 적용<br>
@@ -1058,7 +1253,6 @@
                 </div>
             </div>
 
-            <!-- ROI PAGE -->
             <div id="page-roi" class="page">
                 <div class="page-header">
                     <h2 class="page-title">💰 투자 수익률 (ROI) 계산</h2>
@@ -1106,15 +1300,126 @@
         </main>
     </div>
     <script>
+// 모바일 사이드바 제어
+function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebar-overlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// THEME TOGGLE (다크/라이트) - 계산/옵션 로직은 건드리지 않고 UI 색상만 반전
+const THEME_KEY = 'moldflow_helpdesk_theme_v1';
+
+function cssVar(name){
+    return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+function updateThemeToggleLabel(){
+    const btn = document.getElementById('theme-toggle');
+    if(!btn) return;
+    const isLight = document.body.classList.contains('light-mode');
+    btn.textContent = isLight ? '🌙 어둡게' : '🌞 밝게';
+    btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+}
+
+function applyChartTheme(){
+    // Fill Control 차트 텍스트/그리드 색상만 테마에 맞춰 동기화
+    try{
+        if (typeof fillChart !== 'undefined' && fillChart) {
+            const border = cssVar('--border') || '#d1d5db';
+            const textSecondary = cssVar('--text-secondary') || '#4b5563';
+            const textPrimary = cssVar('--text-primary') || '#111827';
+
+            if(fillChart.options?.scales?.x?.grid) fillChart.options.scales.x.grid.color = border;
+            if(fillChart.options?.scales?.y?.grid) fillChart.options.scales.y.grid.color = border;
+            if(fillChart.options?.scales?.x?.ticks) fillChart.options.scales.x.ticks.color = textSecondary;
+            if(fillChart.options?.scales?.y?.ticks) fillChart.options.scales.y.ticks.color = textSecondary;
+            if(fillChart.options?.plugins?.legend?.labels) fillChart.options.plugins.legend.labels.color = textPrimary;
+
+            fillChart.update();
+        }
+    }catch(e){}
+}
+
+function setTheme(mode){
+    const isLight = (mode === 'light');
+    document.body.classList.toggle('light-mode', isLight);
+    localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark');
+    updateThemeToggleLabel();
+    applyChartTheme();
+}
+
+function toggleTheme(){
+    const isLight = document.body.classList.contains('light-mode');
+    setTheme(isLight ? 'dark' : 'light');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'light') document.body.classList.add('light-mode');
+    updateThemeToggleLabel();
+    applyChartTheme();
+});
+
+        // LOGIN SECURITY LOGIC
+        const ACCESS_CODE = "EDNC2026"; // 초기 비밀번호 설정
+        
+        function tryLogin() {
+            const input = document.getElementById('login-pw');
+            const overlay = document.getElementById('login-overlay');
+            const main = document.getElementById('main-app');
+            const error = document.getElementById('login-error');
+            
+            if (input.value === ACCESS_CODE) {
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    main.style.filter = 'none';
+                    document.body.style.overflowX = 'auto'; // 스크롤 허용
+                }, 500);
+                // 로그인 유지 (선택사항: 세션 동안만 유지)
+                sessionStorage.setItem('isLoggedIn', 'true');
+            } else {
+                error.style.display = 'block';
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        function doLogout() {
+            if(confirm('로그아웃 하시겠습니까?')) {
+                sessionStorage.removeItem('isLoggedIn');
+                location.reload();
+            }
+        }
+
+        // 자동 로그인 체크 (세션 스토리지 사용)
+        document.addEventListener("DOMContentLoaded", () => {
+            if(sessionStorage.getItem('isLoggedIn') === 'true') {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-app').style.filter = 'none';
+            }
+        });
+
         // Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => navigateTo(item.dataset.page));
+            item.addEventListener('click', () => {
+                navigateTo(item.dataset.page);
+                closeSidebar(); // 모바일에서 메뉴 선택 후 사이드바 닫기
+            });
         });
         function navigateTo(page) {
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelector('[data-page="'+page+'"]').classList.add('active');
             document.getElementById('page-'+page).classList.add('active');
+            window.scrollTo(0, 0); // 페이지 상단으로 스크롤
         }
 
         // Metering Calculator
@@ -1237,18 +1542,18 @@
                             type: 'linear',
                             reverse: true,
                             title: { display: true, text: '스크류 위치 (mm)', color: '#8899aa' },
-                            grid: { color: '#2d3d52' },
-                            ticks: { color: '#8899aa' }
+                            grid: { color: cssVar('--border') },
+                            ticks: { color: cssVar('--text-secondary') }
                         },
                         y: {
                             title: { display: true, text: '사출 속도 (mm/s)', color: '#8899aa' },
-                            grid: { color: '#2d3d52' },
-                            ticks: { color: '#8899aa' },
+                            grid: { color: cssVar('--border') },
+                            ticks: { color: cssVar('--text-secondary') },
                             beginAtZero: true
                         }
                     },
                     plugins: {
-                        legend: { labels: { color: '#e8edf3' } }
+                        legend: { labels: { color: cssVar('--text-primary') } }
                     }
                 }
             });
@@ -1602,8 +1907,12 @@
             }
         }
 
-        // Initialize
+// Initialize
         document.addEventListener('DOMContentLoaded', () => {
+            // [1] 사용 기한 체크 (Expiration Check)
+            checkExpiration(); 
+
+            // [2] 기존 초기화 로직
             initSpeedLinearityTable();
             initFillFlowTable();
             initHoldTimeTable();
@@ -1612,7 +1921,76 @@
             calcFillControl();
             const today = new Date().toISOString().split('T')[0];
             document.querySelectorAll('input[type="date"]').forEach(input => { input.value = today; });
+
+            // [3] 로그인 세션 체크
+            if(sessionStorage.getItem('isLoggedIn') === 'true') {
+                // 만료되지 않았을 때만 자동 로그인 허용
+                if(!isExpired()) {
+                    document.getElementById('login-overlay').style.display = 'none';
+                    document.getElementById('main-app').style.filter = 'none';
+                }
+            }
         });
+
+        // --- 사용 기한 체크 함수 (새로 추가됨) ---
+        function isExpired() {
+            const expireDate = new Date("2026-03-01T00:00:00"); // 2026년 3월 1일 0시부터 차단 (즉, 2월 28일까지 사용 가능)------------------------>
+            const now = new Date();
+            return now >= expireDate;
+        }
+
+        function checkExpiration() {
+            if (isExpired()) {
+                // 만료된 경우: 입력창과 버튼 비활성화 및 메시지 출력
+                const input = document.getElementById('login-pw');
+                const btn = document.querySelector('.login-btn');
+                const error = document.getElementById('login-error');
+
+                input.disabled = true;
+                input.placeholder = "사용 기한이 만료되었습니다.";
+                btn.disabled = true;
+                btn.style.background = "#555"; // 회색으로 변경
+                btn.innerText = "만료됨 (Expired)";
+                
+                error.style.display = 'block';
+                error.style.color = 'var(--danger)';
+                error.innerHTML = "⛔ 본 소프트웨어의 사용 기한은<br>2026년 2월 28일까지입니다.";
+                
+                // 로그인 시도 함수(tryLogin) 무력화
+                window.tryLogin = function() { alert("사용 기한이 만료되었습니다."); };
+            }
+        }
+        document.addEventListener('contextmenu', event => event.preventDefault()); // 우클릭 방지
+
+        document.onkeydown = function(e) {
+            // F12 (개발자 도구) 방지
+            if(e.keyCode == 123) {
+                return false;
+            }
+            // Ctrl+Shift+I (개발자 도구) 방지
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) {
+                return false;
+            }
+            // Ctrl+Shift+C (요소 검사) 방지
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) {
+                return false;
+            }
+            // Ctrl+Shift+J (콘솔) 방지
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) {
+                return false;
+            }
+            // Ctrl+U (소스 보기) 방지
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) {
+                return false;
+            }
+        }
+
+        // 이미지 드래그 방지
+        document.ondragstart = function() { return false; }; 
+        
+        // 선택 방지 (텍스트 긁기 방지 - 필요 시 주석 처리)
+        // document.onselectstart = function() { return false; }; 
+
     </script>
 </body>
 </html>
